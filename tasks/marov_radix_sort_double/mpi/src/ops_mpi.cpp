@@ -2,7 +2,6 @@
 
 #include <mpi.h>
 
-#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <utility>
@@ -14,11 +13,9 @@ namespace marov_radix_sort_double {
 
 namespace {
 
-// Convert double to uint64_t for sorting
 uint64_t DoubleToSortableUint64(double val) {
   uint64_t bits = 0;
   std::memcpy(&bits, &val, sizeof(double));
-  // Invert bits for negative numbers
   if ((bits >> 63) != 0) {
     bits = ~bits;
   } else {
@@ -27,9 +24,7 @@ uint64_t DoubleToSortableUint64(double val) {
   return bits;
 }
 
-// Convert back to double
 double SortableUint64ToDouble(uint64_t bits) {
-  // Restore original representation
   if ((bits >> 63) != 0) {
     bits &= ~(1ULL << 63);
   } else {
@@ -40,7 +35,6 @@ double SortableUint64ToDouble(uint64_t bits) {
   return val;
 }
 
-// Radix sort for double array
 void RadixSortDoubles(std::vector<double>& data) {
   if (data.size() <= 1) {
     return;
@@ -51,18 +45,18 @@ void RadixSortDoubles(std::vector<double>& data) {
     keys[i] = DoubleToSortableUint64(data[i]);
   }
 
-  const int kRadix = 256;
+  const int k_radix = 256;
   std::vector<uint64_t> temp(data.size());
 
   for (int shift = 0; shift < 64; shift += 8) {
-    std::vector<size_t> count(kRadix + 1, 0);
+    std::vector<size_t> count(k_radix + 1, 0);
 
     for (uint64_t key : keys) {
       uint8_t digit = (key >> shift) & 0xFF;
       ++count[digit + 1];
     }
 
-    for (int i = 0; i < kRadix; ++i) {
+    for (int i = 0; i < k_radix; ++i) {
       count[i + 1] += count[i];
     }
 
@@ -81,7 +75,6 @@ void RadixSortDoubles(std::vector<double>& data) {
   }
 }
 
-// Merge two sorted arrays
 std::vector<double> MergeSorted(const std::vector<double>& a,
                                 const std::vector<double>& b) {
   std::vector<double> result;
@@ -128,10 +121,8 @@ bool MarovRadixSortDoubleMpi::RunImpl() {
   const auto& input = GetInput();
   int n = static_cast<int>(input.size());
 
-  // Broadcast array size
   MPI_Bcast(&n, 1, MPI_INT, 0, MPI_COMM_WORLD);
 
-  // Calculate data distribution
   std::vector<int> counts(proc_size_);
   std::vector<int> displs(proc_size_);
 
@@ -145,23 +136,18 @@ bool MarovRadixSortDoubleMpi::RunImpl() {
     offset += counts[i];
   }
 
-  // Local array for each process
   std::vector<double> local_data(counts[proc_rank_]);
 
-  // Scatter data
   MPI_Scatterv(proc_rank_ == 0 ? input.data() : nullptr, counts.data(),
                displs.data(), MPI_DOUBLE, local_data.data(),
                counts[proc_rank_], MPI_DOUBLE, 0, MPI_COMM_WORLD);
 
-  // Local sort
   RadixSortDoubles(local_data);
 
-  // Gather and merge results on process 0
   std::vector<double> result;
   if (proc_rank_ == 0) {
     result = std::move(local_data);
 
-    // Receive data from other processes and merge
     for (int proc = 1; proc < proc_size_; ++proc) {
       int recv_count = 0;
       MPI_Recv(&recv_count, 1, MPI_INT, proc, 0, MPI_COMM_WORLD,
@@ -174,7 +160,6 @@ bool MarovRadixSortDoubleMpi::RunImpl() {
 
     GetOutput() = result;
   } else {
-    // Send data to process 0
     int send_count = static_cast<int>(local_data.size());
     MPI_Send(&send_count, 1, MPI_INT, 0, 0, MPI_COMM_WORLD);
     MPI_Send(local_data.data(), send_count, MPI_DOUBLE, 0, 1, MPI_COMM_WORLD);

@@ -1,6 +1,5 @@
 #include "marov_radix_sort_double/seq/include/ops_seq.hpp"
 
-#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <vector>
@@ -11,11 +10,9 @@ namespace marov_radix_sort_double {
 
 namespace {
 
-// Convert double to uint64_t for sorting
 uint64_t DoubleToSortableUint64(double val) {
   uint64_t bits = 0;
   std::memcpy(&bits, &val, sizeof(double));
-  // Invert bits for negative numbers
   if ((bits >> 63) != 0) {
     bits = ~bits;
   } else {
@@ -24,9 +21,7 @@ uint64_t DoubleToSortableUint64(double val) {
   return bits;
 }
 
-// Convert back to double
 double SortableUint64ToDouble(uint64_t bits) {
-  // Restore original representation
   if ((bits >> 63) != 0) {
     bits &= ~(1ULL << 63);
   } else {
@@ -37,7 +32,6 @@ double SortableUint64ToDouble(uint64_t bits) {
   return val;
 }
 
-// Radix sort for double array
 void RadixSortDoubles(std::vector<double>& data) {
   if (data.size() <= 1) {
     return;
@@ -48,18 +42,18 @@ void RadixSortDoubles(std::vector<double>& data) {
     keys[i] = DoubleToSortableUint64(data[i]);
   }
 
-  const int kRadix = 256;
+  const int k_radix = 256;
   std::vector<uint64_t> temp(data.size());
 
   for (int shift = 0; shift < 64; shift += 8) {
-    std::vector<size_t> count(kRadix + 1, 0);
+    std::vector<size_t> count(k_radix + 1, 0);
 
     for (uint64_t key : keys) {
       uint8_t digit = (key >> shift) & 0xFF;
       ++count[digit + 1];
     }
 
-    for (int i = 0; i < kRadix; ++i) {
+    for (int i = 0; i < k_radix; ++i) {
       count[i + 1] += count[i];
     }
 
